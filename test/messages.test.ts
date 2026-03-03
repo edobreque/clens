@@ -19,7 +19,7 @@ describe("renderMessages", () => {
 		expect(result).toContain("No inter-agent data found");
 	});
 
-	test("returns contextual info when spawn links exist but no msg_send events", () => {
+	test("shows spawn events when spawn links exist but no msg_send events", () => {
 		// Write _links.jsonl with only spawn events (no messages)
 		const spawnLink = JSON.stringify({
 			t: 1000,
@@ -31,8 +31,8 @@ describe("renderMessages", () => {
 		writeFileSync(`${TEST_DIR}/.clens/sessions/_links.jsonl`, `${spawnLink}\n`);
 
 		const result = renderMessages("parent-id", TEST_DIR);
-		expect(result).toContain("subagent coordination");
-		expect(result).toContain("No direct messages");
+		expect(result).toContain("[spawn]");
+		expect(result).toContain("builder");
 	});
 
 	test("formats messages with timestamp, from, to, summary", () => {
@@ -178,7 +178,7 @@ describe("renderMessages", () => {
 		expect(result).toContain("completed: task-99");
 	});
 
-	test("sorts messages, idle, and task_complete events chronologically", () => {
+	test("sorts messages, idle, spawn, and task_complete events chronologically", () => {
 		const events = [
 			JSON.stringify({
 				t: 1706000000000,
@@ -194,14 +194,14 @@ describe("renderMessages", () => {
 				parent_session: "sess-1",
 				agent_id: "agent-se-id",
 				agent_type: "builder",
-				agent_name: "second-event",
+				agent_name: "second-agent",
 			}),
 			JSON.stringify({
 				t: 1706000003000,
 				type: "task_complete",
 				task_id: "t1",
 				agent: "builder-x",
-				subject: "third-event",
+				subject: "fourth-event",
 			}),
 			JSON.stringify({
 				t: 1706000001000,
@@ -210,35 +210,39 @@ describe("renderMessages", () => {
 				from: "agent-a",
 				to: "agent-b",
 				msg_type: "text",
-				summary: "first-event",
+				summary: "second-event",
 			}),
 			JSON.stringify({
 				t: 1706000002000,
 				type: "teammate_idle",
-				teammate: "second-event",
+				teammate: "second-agent",
 			}),
 		].join("\n");
 		writeFileSync(`${TEST_DIR}/.clens/sessions/_links.jsonl`, `${events}\n`);
 
 		const result = renderMessages("sess-1", TEST_DIR);
-		const lines = result.split("\n");
-		expect(lines[0]).toContain("first-event");
-		expect(lines[1]).toContain("second-event");
-		expect(lines[2]).toContain("third-event");
+		const lines = result.split("\n").filter((l) => l.trim().length > 0);
+		// Spawns first (t=0), then msg_send (t=1), idle (t=2), task_complete (t=3)
+		expect(lines[0]).toContain("[spawn]");
+		expect(lines[1]).toContain("[spawn]");
+		expect(lines[2]).toContain("second-event");
+		expect(lines[3]).toContain("[idle]");
+		expect(lines[4]).toContain("fourth-event");
 	});
 
-	test("returns contextual info when only spawn events exist", () => {
+	test("shows spawn events when only spawn events exist", () => {
 		const spawnLink = JSON.stringify({
 			t: 1000,
 			type: "spawn",
 			parent_session: "parent-id",
 			agent_id: "child-id",
 			agent_type: "builder",
+			agent_name: "builder-1",
 		});
 		writeFileSync(`${TEST_DIR}/.clens/sessions/_links.jsonl`, `${spawnLink}\n`);
 
 		const result = renderMessages("parent-id", TEST_DIR);
-		expect(result).toContain("subagent coordination");
-		expect(result).toContain("Task-based coordination visible in: clens agents");
+		expect(result).toContain("[spawn]");
+		expect(result).toContain("builder-1");
 	});
 });

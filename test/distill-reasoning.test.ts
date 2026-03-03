@@ -22,7 +22,7 @@ describe("extractReasoning", () => {
 				message: {
 					role: "assistant",
 					content: [
-						{ type: "thinking", thinking: "I should read the file" },
+						{ type: "thinking", thinking: "Let me investigate this file" },
 						{ type: "tool_use", id: "toolu_01", name: "Read", input: { file_path: "/foo.ts" } },
 					],
 				},
@@ -62,7 +62,7 @@ describe("extractReasoning", () => {
 		expect(result).toHaveLength(1);
 		expect(result[0].tool_use_id).toBe("toolu_02");
 		expect(result[0].tool_name).toBe("Grep");
-		expect(result[0].intent_hint).toBe("debugging");
+		expect(result[0].intent_hint).toBe("research");
 	});
 
 	test("skips non-assistant entries when scanning forward", () => {
@@ -157,6 +157,50 @@ describe("extractReasoning", () => {
 		expect(result[1].intent_hint).toBe("research");
 		expect(result[2].intent_hint).toBe("debugging");
 		expect(result[3].intent_hint).toBe("planning");
+		expect(result[4].intent_hint).toBe("general");
+	});
+
+	test("classifies planning with phases over debugging", () => {
+		const entries: readonly TranscriptEntry[] = [
+			makeAssistantEntry({
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "This is a comprehensive plan with 13 tasks across 3 phases",
+						},
+					],
+				},
+			}),
+		];
+
+		const result = extractReasoning(entries);
+		expect(result[0].intent_hint).toBe("planning");
+	});
+
+	test("classifies debugging only when failure + action words co-occur", () => {
+		const makeThinkingEntry = (thinking: string): TranscriptEntry =>
+			makeAssistantEntry({
+				message: {
+					role: "assistant",
+					content: [{ type: "thinking", thinking }],
+				},
+			});
+
+		const entries: readonly TranscriptEntry[] = [
+			makeThinkingEntry("Let me fix this error by adding a null check"),
+			makeThinkingEntry("Let me fix the implementation by restructuring the approach"),
+			makeThinkingEntry("Should I use Redux or Context for state management?"),
+			makeThinkingEntry("Let me search for how the auth module works"),
+			makeThinkingEntry("I am just thinking about random stuff today"),
+		];
+
+		const result = extractReasoning(entries);
+		expect(result[0].intent_hint).toBe("debugging");
+		expect(result[1].intent_hint).toBe("planning");
+		expect(result[2].intent_hint).toBe("deciding");
+		expect(result[3].intent_hint).toBe("research");
 		expect(result[4].intent_hint).toBe("general");
 	});
 

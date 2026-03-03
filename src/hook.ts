@@ -7,6 +7,10 @@ import { logError } from "./utils";
 const raw = await Bun.stdin.text();
 if (!raw.trim()) process.exit(0);
 
+// Guard: reject non-JSON input silently (e.g. plain text, binary)
+const firstChar = raw.trimStart()[0];
+if (firstChar !== "{" && firstChar !== "[") process.exit(0);
+
 const event = (Bun.argv[2] || "unknown") as HookEventType;
 
 try {

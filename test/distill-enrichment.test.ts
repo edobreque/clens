@@ -126,7 +126,7 @@ describe("extractReasoning", () => {
 			expect(result[0].intent_hint).toBe("general");
 		});
 
-		test("debugging takes priority over planning when both present", () => {
+		test("planning takes priority over debugging when both present", () => {
 			const entries = [
 				makeAssistantEntry([
 					{
@@ -136,7 +136,7 @@ describe("extractReasoning", () => {
 				]),
 			];
 			const result = extractReasoning(entries);
-			expect(result[0].intent_hint).toBe("debugging");
+			expect(result[0].intent_hint).toBe("planning");
 		});
 	});
 

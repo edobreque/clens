@@ -10,7 +10,7 @@ import { extractBacktracks } from "./backtracks";
 import { extractEditChains } from "./edit-chains";
 import { extractFileMap } from "./file-map";
 import { extractReasoning } from "./reasoning";
-import { extractStats } from "./stats";
+import { estimateCostFromTokens, extractStats } from "./stats";
 
 const isAssistantEntry = (entry: TranscriptEntry): boolean => entry.type === "assistant";
 
@@ -141,6 +141,9 @@ export const distillAgent = (entries: readonly TranscriptEntry[]): AgentDistillR
 	const file_map = extractFileMap(events);
 	const token_usage = extractTokenUsage(entries);
 	const model = extractAgentModel(entries);
+	const realCost = model && token_usage.input_tokens > 0
+		? estimateCostFromTokens(model, token_usage.input_tokens, token_usage.output_tokens, token_usage.cache_read_tokens, token_usage.cache_creation_tokens)
+		: statsResult.cost_estimate;
 	const task_prompt = extractTaskPrompt(entries);
 
 	// Extract reasoning from transcript entries
@@ -165,7 +168,7 @@ export const distillAgent = (entries: readonly TranscriptEntry[]): AgentDistillR
 		file_map,
 		model,
 		token_usage,
-		cost_estimate: statsResult.cost_estimate,
+		cost_estimate: realCost,
 		...(task_prompt !== undefined ? { task_prompt } : {}),
 		...(reasoning.length > 0 ? { reasoning } : {}),
 		...(backtracks.length > 0 ? { backtracks } : {}),

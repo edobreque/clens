@@ -526,6 +526,88 @@ describe("distillAgent", () => {
 		expect(result).toBeUndefined();
 	});
 
+	test("uses real token-based cost when model and token_usage are available", () => {
+		const entries: readonly TranscriptEntry[] = [
+			makeUserEntry({
+				message: { role: "user", content: "Fix the bug" },
+			}),
+			makeAssistantEntry({
+				message: {
+					role: "assistant",
+					content: [
+						{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "/src/a.ts" } },
+					],
+					model: "claude-sonnet-4-20250514",
+					usage: {
+						input_tokens: 1000,
+						output_tokens: 500,
+						cache_read_input_tokens: 200,
+						cache_creation_input_tokens: 100,
+					},
+				},
+			}),
+		];
+
+		const result = distillAgent(entries);
+		expect(result).toBeDefined();
+		expect(result?.cost_estimate).toBeDefined();
+		expect(result?.cost_estimate?.is_estimated).toBe(false);
+		expect(result?.cost_estimate?.model).toBe("claude-sonnet-4-20250514");
+		expect(result?.cost_estimate?.estimated_input_tokens).toBe(1000);
+		expect(result?.cost_estimate?.estimated_output_tokens).toBe(500);
+	});
+
+	test("falls back to heuristic cost when token_usage is zero", () => {
+		const entries: readonly TranscriptEntry[] = [
+			makeUserEntry({
+				message: { role: "user", content: "Hello" },
+			}),
+			makeAssistantEntry({
+				message: {
+					role: "assistant",
+					content: [
+						{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "/src/a.ts" } },
+					],
+					model: "claude-sonnet-4-20250514",
+				},
+			}),
+		];
+
+		const result = distillAgent(entries);
+		expect(result).toBeDefined();
+		// No usage data means token_usage.input_tokens === 0, so falls back to heuristic
+		if (result?.cost_estimate) {
+			expect(result.cost_estimate.is_estimated).toBe(true);
+		}
+	});
+
+	test("returns undefined cost_estimate when model is unknown", () => {
+		const entries: readonly TranscriptEntry[] = [
+			makeUserEntry({
+				message: { role: "user", content: "Hello" },
+			}),
+			makeAssistantEntry({
+				message: {
+					role: "assistant",
+					content: [
+						{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "/src/a.ts" } },
+					],
+					model: "unknown-model-xyz",
+					usage: {
+						input_tokens: 1000,
+						output_tokens: 500,
+					},
+				},
+			}),
+		];
+
+		const result = distillAgent(entries);
+		expect(result).toBeDefined();
+		// estimateCostFromTokens returns undefined for unknown models,
+		// and statsResult.cost_estimate also returns undefined for unknown models
+		expect(result?.cost_estimate).toBeUndefined();
+	});
+
 	test("returns AgentDistillResult for valid transcript fixture", () => {
 		const fixturePath = `${import.meta.dir}/fixtures/transcripts/simple-session.jsonl`;
 		const entries = readTranscript(fixturePath);

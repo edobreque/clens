@@ -70,8 +70,8 @@ describe("hook handler", () => {
 		expect(exitCode).toBe(0);
 	});
 
-	test("logs error details on invalid JSON", async () => {
-		const invalidInput = "not valid json at all {broken";
+	test("non-JSON input exits cleanly without error log entry", async () => {
+		const invalidInput = "not valid json at all";
 		const projectRoot = process.cwd();
 		const hookScript = `${projectRoot}/src/hook.ts`;
 
@@ -85,18 +85,40 @@ describe("hook handler", () => {
 		const exitCode = await proc.exited;
 		expect(exitCode).toBe(0);
 
-		// The hook falls back to process.cwd() (TEST_DIR) for error logging when JSON parse fails
+		// Guard catches non-JSON input before JSON.parse — no error log created
 		const errorLog = `${TEST_DIR}/.clens/errors.log`;
-		expect(existsSync(errorLog)).toBe(true);
+		expect(existsSync(errorLog)).toBe(false);
+	});
 
-		const logContent = readFileSync(errorLog, "utf-8");
-		// Should contain event type
-		expect(logContent).toContain("[PreToolUse]");
-		// Should contain stack trace indicator
-		expect(logContent).toContain("stack:");
-		// Should contain truncated input
-		expect(logContent).toContain("input:");
-		expect(logContent).toContain("not valid json");
+	test("valid JSON input still processes normally", async () => {
+		const payload = JSON.stringify({
+			session_id: "valid-session",
+			cwd: TEST_DIR,
+			hook_event_name: "PreToolUse",
+			tool_name: "Read",
+			tool_input: { file_path: "/foo.ts" },
+			tool_use_id: "t2",
+			transcript_path: "/tmp/t.jsonl",
+			permission_mode: "default",
+		});
+
+		const proc = Bun.spawn(["bun", "run", "src/hook.ts", "PreToolUse"], {
+			stdin: new Response(payload),
+			stdout: "pipe",
+			stderr: "pipe",
+			cwd: process.cwd(),
+		});
+
+		const exitCode = await proc.exited;
+		expect(exitCode).toBe(0);
+
+		const sessionFile = `${TEST_DIR}/.clens/sessions/valid-session.jsonl`;
+		expect(existsSync(sessionFile)).toBe(true);
+
+		const content = readFileSync(sessionFile, "utf-8").trim();
+		const stored: StoredEvent = JSON.parse(content);
+		expect(stored.event).toBe("PreToolUse");
+		expect(stored.sid).toBe("valid-session");
 	});
 
 	test("creates directory on first event", async () => {

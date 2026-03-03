@@ -14,7 +14,7 @@ describe("CLI Text Output Format", () => {
 
 	// ── help output ─────────────────────────────────────
 
-	test("help shows all 8 commands", async () => {
+	test("help shows all 9 commands", async () => {
 		const r = await runCli(["--help"], projectDir);
 		const plain = stripAnsi(r.stdout);
 		const expectedCommands = [
@@ -26,6 +26,7 @@ describe("CLI Text Output Format", () => {
 			"explore",
 			"clean",
 			"export",
+			"what",
 		];
 		for (const cmd of expectedCommands) {
 			expect(plain).toContain(cmd);

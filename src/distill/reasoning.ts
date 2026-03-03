@@ -4,11 +4,26 @@ const THINKING_TRUNCATE_LIMIT = 5000;
 
 const classifyIntent = (thinking: string): TranscriptReasoning["intent_hint"] => {
 	const lower = thinking.toLowerCase();
-	if (/\b(error|fix|bug|fail|crash|broken|issue|wrong|debug)\b/.test(lower)) return "debugging";
-	if (/\b(plan|approach|strategy|design|architect|phase|step)\b/.test(lower)) return "planning";
-	if (/\b(search|look up|check|investigate|find|read|explore)\b/.test(lower)) return "research";
-	if (/\b(should|decide|option|choose|between|alternative|trade.?off)\b/.test(lower))
+	// Planning (highest priority)
+	if (/\b(plan|approach|strategy|design|architect|phase|roadmap|milestone)\b/.test(lower))
+		return "planning";
+	if (/\bstep\s+\d/.test(lower)) return "planning";
+	if (/\bimplement\s+.+\s+then\b/.test(lower)) return "planning";
+	if (/^\s*\d+\.\s/m.test(thinking)) return "planning";
+	// Deciding
+	if (/\b(should|decide|option|choose|between|alternative|trade.?off|pros and cons)\b/.test(lower))
 		return "deciding";
+	// Research
+	if (/\b(search|look up|investigate|find out|explore|understand)\b/.test(lower))
+		return "research";
+	if (/\bcheck\s+(if|how|whether|for|what|the|this|that|on|into)\b/.test(lower))
+		return "research";
+	// Debugging (requires BOTH failure context + action word)
+	if (
+		/\b(error|bug|fail|crash|broken)\b/.test(lower) &&
+		/\b(fix|debug|resolve|patch|workaround)\b/.test(lower)
+	)
+		return "debugging";
 	return "general";
 };
 

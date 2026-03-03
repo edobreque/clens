@@ -29,6 +29,19 @@ export const truncate = (s: string, maxLen: number): string =>
 	s.length <= maxLen ? s : `${s.slice(0, maxLen - 3)}...`;
 
 /**
+ * Classify backtrack severity by count and optional time percentage.
+ */
+export const classifySeverity = (
+	count: number,
+	timePercent = 0,
+): { readonly label: string; readonly color: (s: string) => string } =>
+	count >= 5 || timePercent > 25
+		? { label: "HIGH", color: red }
+		: count >= 3 || timePercent > 10
+			? { label: "MEDIUM", color: yellow }
+			: { label: "LOW", color: green };
+
+/**
  * Color a drift score: green (<0.3), yellow (<0.7), red (>=0.7).
  */
 export const colorDrift = (score: number): string => {

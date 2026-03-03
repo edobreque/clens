@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@silou/clens)](https://www.npmjs.com/package/@silou/clens)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1086%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1151%20passing-brightgreen)]()
 
 **Local-first session capture and analysis for Claude Code agents.** See what your agent actually did — every tool call, backtrack, decision, and reasoning step — without any network dependencies.
 
@@ -38,7 +38,8 @@ clens init                          # install hooks
 # use Claude Code normally
 clens list                          # see captured sessions
 clens distill --last                # analyze latest session
-clens report --last                 # what happened? (summary)
+clens what --last                   # quick summary: request, outcome, cost
+clens report --last                 # detailed report
 clens report --last backtracks      # drill into backtracks
 clens agents --last                 # agent overview
 clens explore                       # interactive TUI explorer
@@ -63,6 +64,7 @@ clens explore                       # interactive TUI explorer
 |---|---|
 | `list` | List captured sessions with duration, events, team, type, status |
 | `distill [id]` | Extract insights: backtracks, decisions, file map, reasoning, edit chains |
+| `what [id]` | Quick summary: request, outcome, cost, issues, files changed |
 | `report [id]` | Session summary -- backtrack severity, high-risk files, top tools |
 | `report [id] backtracks` | Backtrack analysis (add `--detail` for per-backtrack breakdown) |
 | `report [id] drift [spec]` | Plan drift analysis (spec vs actual files) |
@@ -152,7 +154,7 @@ All data is local. No network calls. No telemetry. Full tool call payloads -- in
 ## Development
 
 ```sh
-bun test          # 1086 tests across 48 files
+bun test          # 1151 tests across 49 files
 bun run typecheck
 bun run build
 ```

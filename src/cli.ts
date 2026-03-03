@@ -14,7 +14,7 @@ type CommandDef = {
 	readonly handler: (ctx: CommandContext) => Promise<void>;
 };
 
-// --- 8 commands ---
+// --- 9 commands ---
 
 const commands: Readonly<Record<string, CommandDef>> = {
 	init: {
@@ -165,6 +165,18 @@ const commands: Readonly<Record<string, CommandDef>> = {
 			});
 		},
 	},
+	what: {
+		description: "Quick session summary (request, outcome, cost, issues)",
+		handler: async (ctx) => {
+			const { resolveSessionId } = await import("./commands/shared");
+			const { whatCommand } = await import("./commands/what");
+			await whatCommand({
+				sessionId: resolveSessionId(ctx.positional[1], ctx.flags.last, ctx.projectDir),
+				projectDir: ctx.projectDir,
+				json: ctx.flags.json,
+			});
+		},
+	},
 };
 
 // --- Killed command suggestions ---
@@ -203,6 +215,7 @@ const VALID_FLAGS_BY_COMMAND: Readonly<Record<string, ReadonlySet<string>>> = {
 	explore: new Set([]),
 	clean: new Set(["--last", "--all", "--force"]),
 	export: new Set(["--last", "--otel"]),
+	what: new Set(["--last", "--json"]),
 };
 
 /** Find which command a flag belongs to, for suggestion messages. */
@@ -259,6 +272,7 @@ ${bold("Sessions:")}
   ${cyan("export")}            Export session as archive
 
 ${bold("Analysis:")}
+  ${cyan("what")}              Quick summary: request, outcome, cost, issues
   ${cyan("report")}            Session summary (default view)
   ${cyan("report backtracks")} Backtrack analysis
   ${cyan("report drift")}      Plan drift analysis

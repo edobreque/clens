@@ -360,7 +360,7 @@ describe("buildAgentTree", () => {
 		expect(result[0].agent_type).toBe("builder");
 		expect(result[0].agent_name).toBe("builder-1");
 		expect(result[0].duration_ms).toBe(4000); // 5000 - 1000
-		expect(result[0].tool_call_count).toBe(2);
+		expect(result[0].tool_call_count).toBe(0); // reset to 0: no enrichment → ghost agent
 		expect(result[0].children).toEqual([]);
 	});
 
@@ -437,7 +437,7 @@ describe("buildAgentTree", () => {
 		];
 
 		const result = buildAgentTree("root-session", links, events, noopReadTranscript);
-		expect(result[0].tool_call_count).toBe(2);
+		expect(result[0].tool_call_count).toBe(0); // reset to 0: no enrichment → ghost agent
 	});
 
 	test("enriches node when transcript path is available on stop link", () => {
@@ -498,6 +498,58 @@ describe("buildAgentTree", () => {
 		expect(result).toHaveLength(1); // Only one agent, not two
 		expect(result[0].session_id).toBe("agent-1");
 		expect(result[0].duration_ms).toBe(4000); // 5000 - 1000
+	});
+
+	test("resets tool_call_count to 0 when enrichment fails (ghost agent)", () => {
+		const links: readonly LinkEvent[] = [
+			makeSpawn({ t: 1000, agent_id: "agent-1", parent_session: "root-session" }),
+			makeStop({ t: 5000, agent_id: "agent-1", parent_session: "root-session" }),
+		];
+		const events = [
+			makeEvent({ t: 2000, event: "PreToolUse" }),
+			makeEvent({ t: 3000, event: "PreToolUse" }),
+		];
+
+		// noopReadTranscript returns [], enrichment fails → ghost agent
+		const result = buildAgentTree("root-session", links, events, noopReadTranscript);
+		expect(result[0].tool_call_count).toBe(0);
+		expect(result[0].stats).toBeUndefined();
+		expect(result[0].model).toBeUndefined();
+	});
+
+	test("retains real tool_call_count when enrichment succeeds", () => {
+		const links: readonly LinkEvent[] = [
+			makeSpawn({ t: 1000, agent_id: "agent-1", parent_session: "root-session" }),
+			makeStop({ t: 5000, agent_id: "agent-1", parent_session: "root-session", transcript_path: "/tmp/t.jsonl" }),
+		];
+		const events = [
+			makeEvent({ t: 2000, event: "PreToolUse" }),
+		];
+
+		const mockReader = (_path: string): readonly TranscriptEntry[] => [
+			{
+				uuid: "uuid-1",
+				parentUuid: null,
+				sessionId: "agent-1",
+				type: "assistant",
+				timestamp: "2024-01-01T00:00:01.000Z",
+				message: {
+					role: "assistant",
+					content: [
+						{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "/src/foo.ts" } },
+						{ type: "tool_use", id: "t2", name: "Edit", input: { file_path: "/src/foo.ts", old_string: "a", new_string: "b" } },
+						{ type: "tool_use", id: "t3", name: "Grep", input: { pattern: "x" } },
+					],
+					model: "claude-sonnet-4-20250514",
+					usage: { input_tokens: 100, output_tokens: 50 },
+				},
+			},
+		];
+
+		const result = buildAgentTree("root-session", links, events, mockReader);
+		expect(result[0].tool_call_count).toBe(3);
+		expect(result[0].stats).toBeDefined();
+		expect(result[0].model).toBe("claude-sonnet-4-20250514");
 	});
 
 	test("prefers hook-based tool count when non-zero over transcript stats", () => {

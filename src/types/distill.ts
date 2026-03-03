@@ -50,6 +50,7 @@ export interface PhaseBoundaryDecision extends BaseDecisionPoint {
 	readonly phase_index: number;
 }
 
+/** @deprecated No longer emitted by extractAgentDecisions — kept for backward compatibility. */
 export interface AgentSpawnDecision extends BaseDecisionPoint {
 	readonly type: "agent_spawn";
 	readonly agent_id: string;
@@ -65,6 +66,7 @@ export interface TaskDelegationDecision extends BaseDecisionPoint {
 	readonly subject?: string;
 }
 
+/** @deprecated No longer emitted by extractAgentDecisions — kept for backward compatibility. */
 export interface TaskCompletionDecision extends BaseDecisionPoint {
 	readonly type: "task_completion";
 	readonly task_id: string;
@@ -72,6 +74,7 @@ export interface TaskCompletionDecision extends BaseDecisionPoint {
 	readonly subject?: string;
 }
 
+/** AgentSpawnDecision and TaskCompletionDecision remain in the union for deserialization of previously-distilled data. */
 export type DecisionPoint =
 	| TimingGapDecision
 	| ToolPivotDecision

@@ -23,13 +23,17 @@ const buildTeamLeadRow = (distilled: DistilledSession): AgentRow => ({
 	files: distilled.file_map?.files.filter((f) => f.edits > 0 || f.writes > 0).length ?? 0,
 });
 
+const isGhostAgent = (agent: AgentNode): boolean =>
+	!agent.model && !agent.stats;
+
 const agentToRow = (agent: AgentNode): AgentRow => {
 	const filesCount = agent.file_map
 		? agent.file_map.files.filter((f) => f.edits > 0 || f.writes > 0).length
 		: 0;
+	const baseName = agent.agent_name ?? agent.agent_type;
 	return {
 		id: agent.session_id.slice(0, 8),
-		name: agent.agent_name ?? agent.agent_type,
+		name: isGhostAgent(agent) ? `${baseName}${dim(" [no data]")}` : baseName,
 		type: agent.agent_type,
 		model: agent.model ?? "-",
 		duration: formatDuration(agent.duration_ms),

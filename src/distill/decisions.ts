@@ -1,4 +1,4 @@
-import type { DecisionPoint, LinkEvent, PhaseInfo, SpawnLink, StoredEvent, TaskCompleteLink, TaskLink, TimingGapDecision } from "../types";
+import type { DecisionPoint, LinkEvent, PhaseInfo, StoredEvent, TaskLink, TimingGapDecision } from "../types";
 import { buildTeamPhases, hasTaskLinks } from "./decisions-team";
 
 const TIMING_GAP_THRESHOLD_MS = 30_000; // 30 seconds
@@ -239,46 +239,22 @@ const phaseBoundaryDecisions = (phases: readonly PhaseInfo[]): readonly Decision
 
 // --- Agent Decision Extraction ---
 
-const isSpawnLink = (link: LinkEvent): link is SpawnLink => link.type === "spawn";
 const isTaskLink = (link: LinkEvent): link is TaskLink => link.type === "task";
-const isTaskCompleteLink = (link: LinkEvent): link is TaskCompleteLink => link.type === "task_complete";
 
-/** Extract agent-level orchestration decisions from link events. */
-export const extractAgentDecisions = (links: readonly LinkEvent[]): readonly DecisionPoint[] => {
-	const spawnDecisions: readonly DecisionPoint[] = links
-		.filter(isSpawnLink)
-		.map((spawn) => ({
-			type: "agent_spawn" as const,
-			t: spawn.t,
-			agent_id: spawn.agent_id,
-			agent_name: spawn.agent_name ?? spawn.agent_type,
-			agent_type: spawn.agent_type,
-			parent_session: spawn.parent_session,
-		}));
-
-	const delegationDecisions: readonly DecisionPoint[] = links
+/** Extract agent-level orchestration decisions from link events.
+ * Only task_delegation with a non-empty subject is considered a real decision.
+ * agent_spawn and task_completion are filtered out as noise. */
+export const extractAgentDecisions = (links: readonly LinkEvent[]): readonly DecisionPoint[] =>
+	links
 		.filter(isTaskLink)
-		.filter((task) => task.action === "assign")
+		.filter((task) => task.action === "assign" && typeof task.subject === "string" && task.subject.length > 0)
 		.map((task) => ({
 			type: "task_delegation" as const,
 			t: task.t,
 			task_id: task.task_id,
 			agent_name: task.owner ?? task.agent ?? "unknown",
-			...(task.subject ? { subject: task.subject } : {}),
+			subject: task.subject,
 		}));
-
-	const completionDecisions: readonly DecisionPoint[] = links
-		.filter(isTaskCompleteLink)
-		.map((task) => ({
-			type: "task_completion" as const,
-			t: task.t,
-			task_id: task.task_id,
-			agent_name: task.agent,
-			...(task.subject ? { subject: task.subject } : {}),
-		}));
-
-	return [...spawnDecisions, ...delegationDecisions, ...completionDecisions];
-};
 
 // --- Main Extractor ---
 

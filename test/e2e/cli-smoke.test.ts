@@ -169,6 +169,26 @@ describe("CLI Smoke Tests", () => {
 		expect(r.json).toBeDefined();
 	});
 
+	// ── what ────────────────────────────────────────────
+
+	test("what --last exits 0", async () => {
+		const r = await runCli(["what", "--last"], projectDir);
+		expect(r.exitCode).toBe(0);
+		const plain = stripAnsi(r.stdout);
+		expect(plain).toContain("Request:");
+		expect(plain).toContain("Outcome:");
+		expect(plain).toContain("Cost:");
+		expect(plain).toContain("Issues:");
+		expect(plain).toContain("Files changed:");
+	});
+
+	test("what --last --json exits 0 and produces valid JSON", async () => {
+		const r = await runCli(["what", "--last", "--json"], projectDir);
+		expect(r.exitCode).toBe(0);
+		expect(r.json).toBeDefined();
+		expect(typeof r.json).toBe("object");
+	});
+
 	// ── Flag validation ─────────────────────────────────
 
 	test("report --deep shows flag validation error", async () => {

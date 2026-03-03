@@ -224,7 +224,10 @@ export const buildAgentTree = (
 			if (fromEvents.tool_call_count > 0) return fromEvents;
 		}
 
-		return baseNode;
+		// Ghost agent: enrichment failed and tool_call_count was estimated from event attribution — reset to 0
+		return baseNode.tool_call_count > 0 && !baseNode.stats
+			? { ...baseNode, tool_call_count: 0 }
+			: baseNode;
 	};
 
 	return rootSpawns.map(buildNode);

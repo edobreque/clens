@@ -203,6 +203,57 @@ describe("CLI JSON Output Validation", () => {
 		});
 	});
 
+	// ── what --last --json ──────────────────────────────
+
+	describe("what --last --json", () => {
+		test("returns object with required fields", async () => {
+			const r = await runCli(["what", "--last", "--json"], projectDir);
+			expect(r.exitCode).toBe(0);
+			expect(typeof r.json).toBe("object");
+			expect(Array.isArray(r.json)).toBe(false);
+
+			const what = r.json as Record<string, unknown>;
+			const missing = missingFields(what, [
+				"request",
+				"outcome",
+				"cost",
+				"issues",
+				"files_changed",
+			]);
+			expect(missing).toEqual([]);
+		});
+
+		test("no ANSI codes in output", async () => {
+			const r = await runCli(["what", "--last", "--json"], projectDir);
+			expect(hasAnsi(r.stdout)).toBe(false);
+		});
+
+		test("outcome has correct structure", async () => {
+			const r = await runCli(["what", "--last", "--json"], projectDir);
+			const what = r.json as { outcome: Record<string, unknown> };
+			const errors = assertFieldTypes(what.outcome, {
+				commits: "number",
+				working_tree_changes: "number",
+				complete: "boolean",
+			});
+			expect(errors).toEqual([]);
+		});
+
+		test("issues has backtrack_count and top_errors", async () => {
+			const r = await runCli(["what", "--last", "--json"], projectDir);
+			const what = r.json as { issues: Record<string, unknown> };
+			expect(typeof what.issues.backtrack_count).toBe("number");
+			expect(Array.isArray(what.issues.top_errors)).toBe(true);
+		});
+
+		test("files_changed is string array", async () => {
+			const r = await runCli(["what", "--last", "--json"], projectDir);
+			const what = r.json as { files_changed: unknown[] };
+			expect(Array.isArray(what.files_changed)).toBe(true);
+			what.files_changed.forEach((f) => expect(typeof f).toBe("string"));
+		});
+	});
+
 	// ── distill --json new fields ──────────────────────
 
 	describe("distill --last --json new fields", () => {

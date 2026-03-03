@@ -1,19 +1,7 @@
 import type { BacktrackResult, DistilledSession, FileMapEntry } from "../types";
 import { flattenAgents, formatSessionDateFull } from "../utils";
-import { fmtDuration } from "./format-helpers";
-import { bold, cyan, dim, green, red, yellow } from "./shared";
-
-// --- Backtrack severity ---
-
-const classifySeverity = (
-	count: number,
-	timePercent: number,
-): { readonly label: string; readonly color: (s: string) => string } =>
-	count >= 5 || timePercent > 25
-		? { label: "HIGH", color: red }
-		: count >= 3 || timePercent > 10
-			? { label: "MEDIUM", color: yellow }
-			: { label: "LOW", color: green };
+import { classifySeverity, fmtDuration, truncate } from "./format-helpers";
+import { bold, cyan, dim, green } from "./shared";
 
 const typeLabel = (type: BacktrackResult["type"]): string =>
 	type === "failure_retry"
@@ -86,10 +74,24 @@ export const renderReportDefault = (distilled: DistilledSession): string => {
 		: "";
 	const header = bold(`Session ${cyan(nameStr)}${dateStr} -- ${durationStr}${modelStr}${costStr}`);
 
+	// Request line
+	const prompt = distilled.user_messages.find((m) => m.message_type === "prompt");
+	const requestLine = prompt
+		? `  ${bold("Request:")} ${truncate(prompt.content.replace(/\n/g, " "), 120)}`
+		: undefined;
+
 	// Stats line
 	const filesModified = summary?.key_metrics?.files_modified ?? stats.unique_files.length;
 	const failRate = (stats.failure_rate * 100).toFixed(1);
 	const statsLine = `  ${stats.tool_call_count} tool calls, ${filesModified} files modified, ${failRate}% failure rate`;
+
+	// Outcome line
+	const commitCount = distilled.git_diff.commits.length;
+	const outcomeParts = [
+		`${filesModified} files changed`,
+		commitCount > 0 ? `${commitCount} commit${commitCount === 1 ? "" : "s"}` : undefined,
+	].filter(Boolean).join(", ");
+	const outcomeLine = `  ${bold("Outcome:")} ${outcomeParts}`;
 
 	// Backtracks section
 	const btSection = (() => {
@@ -138,7 +140,7 @@ export const renderReportDefault = (distilled: DistilledSession): string => {
 
 		const flatAgents = flattenAgents(agents);
 		const activeAgents = flatAgents
-			.filter((a) => a.tool_call_count > 0)
+			.filter((a) => a.tool_call_count > 0 || a.model !== undefined)
 			.sort((a, b) => b.tool_call_count - a.tool_call_count);
 
 		if (activeAgents.length === 0) return [];
@@ -164,7 +166,20 @@ export const renderReportDefault = (distilled: DistilledSession): string => {
 	// Tip
 	const tip = dim("  Run 'clens explore' for interactive deep dive.");
 
-	return [header, "", statsLine, ...btSection, ...highRiskSection, ...topToolsSection, ...agentSection, "", tip].join("\n");
+	const sections = [
+		header,
+		...(requestLine ? ["", requestLine] : []),
+		"",
+		statsLine,
+		outcomeLine,
+		...btSection,
+		...highRiskSection,
+		...topToolsSection,
+		...agentSection,
+		"",
+		tip,
+	];
+	return sections.join("\n");
 };
 
 // --- Command handler ---
